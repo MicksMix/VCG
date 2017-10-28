@@ -1,2 +1,2 @@
-rem powershell .\build.ps1 -configuration Release
-powershell .\build.ps1 -configuration Release -Target Build-Install-Exe
+rem powershell .\build.ps1 -configuration Debug
+powershell .\build.ps1 -configuration Debug -Target Build-Install-Exe

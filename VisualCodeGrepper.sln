@@ -1,25 +1,39 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+# SharpDevelop 4.4
+VisualStudioVersion = 15.0.26730.12
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "VisualCodeGrepper", "VisualCodeGrepper\VisualCodeGrepper.vbproj", "{DF04B593-4694-49F8-BC1E-70D064BE8C53}"
-EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "VCG-Setup", "VCG-Setup\VCG-Setup.vdproj", "{E0F9D617-45A3-4878-8946-960DEE2D9EE4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
 		Release|x86 = Release|x86
 		Description = Code security review tool
+		Debug|Description = Debug|Description
+		Release|Description = Release|Description
+		Description|x86 = Description|x86
+		Description|Description = Description|Description
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Debug|x86.ActiveCfg = Debug|x86
 		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Debug|x86.Build.0 = Debug|x86
 		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Release|x86.ActiveCfg = Release|x86
 		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Release|x86.Build.0 = Release|x86
-		{E0F9D617-45A3-4878-8946-960DEE2D9EE4}.Debug|x86.ActiveCfg = Debug
-		{E0F9D617-45A3-4878-8946-960DEE2D9EE4}.Release|x86.ActiveCfg = Release
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Debug|Description.Build.0 = Debug|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Debug|Description.ActiveCfg = Debug|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Release|Description.Build.0 = Release|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Release|Description.ActiveCfg = Release|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Description|x86.Build.0 = Debug|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Description|x86.ActiveCfg = Debug|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Description|Description.Build.0 = Debug|Any CPU
+		{DF04B593-4694-49F8-BC1E-70D064BE8C53}.Description|Description.ActiveCfg = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A6E4237F-1275-4729-BBC8-F3C7570F4363}
 	EndGlobalSection
 EndGlobal

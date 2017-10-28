@@ -61,7 +61,7 @@ Task("Build-Install-Exe")
     .IsDependentOn("Build")
     .Does(() =>
 {
-    InnoSetup("./installer/vcg-installer-project.iss");
+    InnoSetup("./vcg-installer/vcg-installer-project.iss");
 });
 
 

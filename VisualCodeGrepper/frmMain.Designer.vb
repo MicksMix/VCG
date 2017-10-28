@@ -103,6 +103,7 @@ Partial Class frmMain
         Me.sfdSaveFileDialog = New System.Windows.Forms.SaveFileDialog()
         Me.ofdOpenFileDialog = New System.Windows.Forms.OpenFileDialog()
         Me.cdColorDialog = New System.Windows.Forms.ColorDialog()
+        Me.btnSelectDir = New System.Windows.Forms.Button()
         Me.mnuMain.SuspendLayout()
         Me.ssStatusStrip.SuspendLayout()
         CType(Me.spMain, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -120,7 +121,7 @@ Partial Class frmMain
         Me.mnuMain.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.FileToolStripMenuItem, Me.EditToolStripMenuItem, Me.ViewToolStripMenuItem, Me.ScanToolStripMenuItem, Me.ToolsToolStripMenuItem, Me.HelpToolStripMenuItem})
         Me.mnuMain.Location = New System.Drawing.Point(0, 0)
         Me.mnuMain.Name = "mnuMain"
-        Me.mnuMain.Size = New System.Drawing.Size(819, 24)
+        Me.mnuMain.Size = New System.Drawing.Size(824, 24)
         Me.mnuMain.TabIndex = 0
         Me.mnuMain.Text = "MenuStrip1"
         '
@@ -219,41 +220,41 @@ Partial Class frmMain
         'CutToolStripMenuItem
         '
         Me.CutToolStripMenuItem.Name = "CutToolStripMenuItem"
-        Me.CutToolStripMenuItem.Size = New System.Drawing.Size(122, 22)
+        Me.CutToolStripMenuItem.Size = New System.Drawing.Size(152, 22)
         Me.CutToolStripMenuItem.Text = "Cut"
         '
         'CopyToolStripMenuItem
         '
         Me.CopyToolStripMenuItem.Name = "CopyToolStripMenuItem"
-        Me.CopyToolStripMenuItem.Size = New System.Drawing.Size(122, 22)
+        Me.CopyToolStripMenuItem.Size = New System.Drawing.Size(152, 22)
         Me.CopyToolStripMenuItem.Text = "Copy"
         '
         'PasteToolStripMenuItem
         '
         Me.PasteToolStripMenuItem.Name = "PasteToolStripMenuItem"
-        Me.PasteToolStripMenuItem.Size = New System.Drawing.Size(122, 22)
+        Me.PasteToolStripMenuItem.Size = New System.Drawing.Size(152, 22)
         Me.PasteToolStripMenuItem.Text = "Paste"
         '
         'ToolStripMenuItem8
         '
         Me.ToolStripMenuItem8.Name = "ToolStripMenuItem8"
-        Me.ToolStripMenuItem8.Size = New System.Drawing.Size(119, 6)
+        Me.ToolStripMenuItem8.Size = New System.Drawing.Size(149, 6)
         '
         'FindToolStripMenuItem
         '
         Me.FindToolStripMenuItem.Name = "FindToolStripMenuItem"
-        Me.FindToolStripMenuItem.Size = New System.Drawing.Size(122, 22)
+        Me.FindToolStripMenuItem.Size = New System.Drawing.Size(152, 22)
         Me.FindToolStripMenuItem.Text = "Find"
         '
         'ToolStripMenuItem6
         '
         Me.ToolStripMenuItem6.Name = "ToolStripMenuItem6"
-        Me.ToolStripMenuItem6.Size = New System.Drawing.Size(119, 6)
+        Me.ToolStripMenuItem6.Size = New System.Drawing.Size(149, 6)
         '
         'SelectAllToolStripMenuItem
         '
         Me.SelectAllToolStripMenuItem.Name = "SelectAllToolStripMenuItem"
-        Me.SelectAllToolStripMenuItem.Size = New System.Drawing.Size(122, 22)
+        Me.SelectAllToolStripMenuItem.Size = New System.Drawing.Size(152, 22)
         Me.SelectAllToolStripMenuItem.Text = "Select All"
         '
         'ViewToolStripMenuItem
@@ -490,7 +491,7 @@ Partial Class frmMain
         'AboutVCGToolStripMenuItem
         '
         Me.AboutVCGToolStripMenuItem.Name = "AboutVCGToolStripMenuItem"
-        Me.AboutVCGToolStripMenuItem.Size = New System.Drawing.Size(133, 22)
+        Me.AboutVCGToolStripMenuItem.Size = New System.Drawing.Size(152, 22)
         Me.AboutVCGToolStripMenuItem.Text = "About VCG"
         '
         'ssStatusStrip
@@ -498,7 +499,7 @@ Partial Class frmMain
         Me.ssStatusStrip.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.sslLabel})
         Me.ssStatusStrip.Location = New System.Drawing.Point(0, 452)
         Me.ssStatusStrip.Name = "ssStatusStrip"
-        Me.ssStatusStrip.Size = New System.Drawing.Size(819, 22)
+        Me.ssStatusStrip.Size = New System.Drawing.Size(824, 22)
         Me.ssStatusStrip.TabIndex = 1
         '
         'sslLabel
@@ -517,23 +518,25 @@ Partial Class frmMain
         '
         'spMain.Panel1
         '
+        Me.spMain.Panel1.Controls.Add(Me.btnSelectDir)
         Me.spMain.Panel1.Controls.Add(Me.cboTargetDir)
         '
         'spMain.Panel2
         '
         Me.spMain.Panel2.Controls.Add(Me.tcMain)
-        Me.spMain.Size = New System.Drawing.Size(819, 428)
+        Me.spMain.Size = New System.Drawing.Size(824, 428)
         Me.spMain.SplitterDistance = 25
         Me.spMain.TabIndex = 2
         '
         'cboTargetDir
         '
         Me.cboTargetDir.AllowDrop = True
-        Me.cboTargetDir.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.cboTargetDir.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.cboTargetDir.FormattingEnabled = True
-        Me.cboTargetDir.Location = New System.Drawing.Point(0, 0)
+        Me.cboTargetDir.Location = New System.Drawing.Point(3, 0)
         Me.cboTargetDir.Name = "cboTargetDir"
-        Me.cboTargetDir.Size = New System.Drawing.Size(819, 21)
+        Me.cboTargetDir.Size = New System.Drawing.Size(724, 21)
         Me.cboTargetDir.TabIndex = 0
         '
         'tcMain
@@ -545,7 +548,7 @@ Partial Class frmMain
         Me.tcMain.Location = New System.Drawing.Point(0, 0)
         Me.tcMain.Name = "tcMain"
         Me.tcMain.SelectedIndex = 0
-        Me.tcMain.Size = New System.Drawing.Size(819, 399)
+        Me.tcMain.Size = New System.Drawing.Size(824, 399)
         Me.tcMain.TabIndex = 1
         '
         'tabTargetFiles
@@ -554,7 +557,7 @@ Partial Class frmMain
         Me.tabTargetFiles.Location = New System.Drawing.Point(4, 22)
         Me.tabTargetFiles.Name = "tabTargetFiles"
         Me.tabTargetFiles.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabTargetFiles.Size = New System.Drawing.Size(811, 373)
+        Me.tabTargetFiles.Size = New System.Drawing.Size(816, 373)
         Me.tabTargetFiles.TabIndex = 0
         Me.tabTargetFiles.Text = "Target Files"
         Me.tabTargetFiles.UseVisualStyleBackColor = True
@@ -565,7 +568,7 @@ Partial Class frmMain
         Me.lbTargets.FormattingEnabled = True
         Me.lbTargets.Location = New System.Drawing.Point(3, 3)
         Me.lbTargets.Name = "lbTargets"
-        Me.lbTargets.Size = New System.Drawing.Size(805, 367)
+        Me.lbTargets.Size = New System.Drawing.Size(810, 367)
         Me.lbTargets.TabIndex = 1
         '
         'tabResults
@@ -574,7 +577,7 @@ Partial Class frmMain
         Me.tabResults.Location = New System.Drawing.Point(4, 22)
         Me.tabResults.Name = "tabResults"
         Me.tabResults.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabResults.Size = New System.Drawing.Size(811, 373)
+        Me.tabResults.Size = New System.Drawing.Size(816, 373)
         Me.tabResults.TabIndex = 1
         Me.tabResults.Text = "Results"
         Me.tabResults.UseVisualStyleBackColor = True
@@ -584,7 +587,7 @@ Partial Class frmMain
         Me.rtbResults.Dock = System.Windows.Forms.DockStyle.Fill
         Me.rtbResults.Location = New System.Drawing.Point(3, 3)
         Me.rtbResults.Name = "rtbResults"
-        Me.rtbResults.Size = New System.Drawing.Size(805, 367)
+        Me.rtbResults.Size = New System.Drawing.Size(810, 367)
         Me.rtbResults.TabIndex = 0
         Me.rtbResults.Text = ""
         '
@@ -594,7 +597,7 @@ Partial Class frmMain
         Me.tabResultsTable.Location = New System.Drawing.Point(4, 22)
         Me.tabResultsTable.Name = "tabResultsTable"
         Me.tabResultsTable.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabResultsTable.Size = New System.Drawing.Size(811, 373)
+        Me.tabResultsTable.Size = New System.Drawing.Size(816, 373)
         Me.tabResultsTable.TabIndex = 2
         Me.tabResultsTable.Text = "Summary Table"
         Me.tabResultsTable.UseVisualStyleBackColor = True
@@ -609,7 +612,7 @@ Partial Class frmMain
         Me.lvResults.HideSelection = False
         Me.lvResults.Location = New System.Drawing.Point(3, 3)
         Me.lvResults.Name = "lvResults"
-        Me.lvResults.Size = New System.Drawing.Size(805, 367)
+        Me.lvResults.Size = New System.Drawing.Size(810, 367)
         Me.lvResults.TabIndex = 0
         Me.lvResults.UseCompatibleStateImageBehavior = False
         Me.lvResults.View = System.Windows.Forms.View.Details
@@ -647,11 +650,21 @@ Partial Class frmMain
         '
         Me.ofdOpenFileDialog.FileName = "XmlResults"
         '
+        'btnSelectDir
+        '
+        Me.btnSelectDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSelectDir.Location = New System.Drawing.Point(733, 0)
+        Me.btnSelectDir.Name = "btnSelectDir"
+        Me.btnSelectDir.Size = New System.Drawing.Size(87, 23)
+        Me.btnSelectDir.TabIndex = 1
+        Me.btnSelectDir.Text = "Select Dir..."
+        Me.btnSelectDir.UseVisualStyleBackColor = True
+        '
         'frmMain
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(819, 474)
+        Me.ClientSize = New System.Drawing.Size(824, 474)
         Me.Controls.Add(Me.spMain)
         Me.Controls.Add(Me.ssStatusStrip)
         Me.Controls.Add(Me.mnuMain)
@@ -756,5 +769,5 @@ Partial Class frmMain
     Friend WithEvents ToolStripMenuItem16 As System.Windows.Forms.ToolStripSeparator
     Friend WithEvents StatusBarToolStripMenuItem As System.Windows.Forms.ToolStripMenuItem
     Friend WithEvents VisualBadFuncBreakdownToolStripMenuItem As System.Windows.Forms.ToolStripMenuItem
-
+    Friend WithEvents btnSelectDir As Button
 End Class

@@ -1,4 +1,4 @@
-﻿' VisualCodeGrepper - Code security scanner
+' VisualCodeGrepper - Code security scanner
 ' Copyright (C) 2012-2013 Nick Dunn and John Murray
 '
 ' This program is free software: you can redistribute it and/or modify
@@ -83,6 +83,10 @@ Public Class frmMain
 
 
     Private Sub NewTargetToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles NewTargetToolStripMenuItem.Click
+        ShowSelectDirectoryDialog()
+    End Sub
+
+    Private Sub ShowSelectDirectoryDialog()
         'Load files to be scanned
         '========================
         Dim strTargetFolder As String
@@ -99,7 +103,6 @@ Public Class frmMain
             strTargetFolder = dialog.FileName.ToString()
             LoadFiles(strTargetFolder)
         End If
-
     End Sub
 
     Private Sub NewTargetFileToolStripMenuItem_Click(sender As System.Object, e As System.EventArgs) Handles NewTargetFileToolStripMenuItem.Click
@@ -109,32 +112,13 @@ Public Class frmMain
 
 
         ' Get target file
-        ofdOpenFileDialog.ShowDialog()
 
-        If Not Windows.Forms.DialogResult.Cancel Then
+        If ofdOpenFileDialog.ShowDialog() = DialogResult.OK Then
             strTargetFile = ofdOpenFileDialog.FileName
             LoadFiles(strTargetFile)
         End If
 
     End Sub
-
-    Private Function CheckFileType(ByVal TargetFile As Object) As Boolean
-        ' Check file type is consistent with required language
-        '=====================================================
-        Dim blnRetVal As Boolean = False
-
-
-        '== Iterate through suffix array and compare to the end of current filename ==
-        For intIndex = 0 To asAppSettings.NumSuffixes
-            If asAppSettings.FileSuffixes(intIndex).trim <> "" And TargetFile.ToString.ToLower.EndsWith(asAppSettings.FileSuffixes(intIndex)) Then
-                blnRetVal = True
-                Exit For
-            End If
-        Next intIndex
-
-        Return blnRetVal
-
-    End Function
 
     Private Sub CCToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles CCToolStripMenuItem.Click
         ' Set code type to be tested and uncheck other menu items
@@ -192,7 +176,7 @@ Public Class frmMain
 
     End Sub
 
-    Public Sub DisplayError(ByVal ErrorMessage As String, Optional ByVal Caption As String = "Error", Optional ByVal MsgBoxStyle As Integer = MsgBoxStyle.Information)
+    Public Sub DisplayError(ByVal ErrorMessage As String, Optional ByVal Caption As String = "Error", Optional ByVal MsgBoxStyle As MsgBoxStyle = MsgBoxStyle.Information)
         ' Display error message to user, depending on GUI/Console mode
         '=============================================================
 
@@ -208,14 +192,7 @@ Public Class frmMain
         ' Iterate through the files in the directory and compile the results
         '===================================================================
 
-        Dim arrShortName() As String
-        Dim strLine As String
-        Dim strScanResult As String = ""
         Dim strTrimmedComment = ""
-
-        Dim blnIsCommented As Boolean = False
-        Dim blnIsColoured As Boolean = False
-
 
         If (CommentScan = False And CodeScan = False) Then Exit Sub
 
@@ -237,7 +214,7 @@ Public Class frmMain
         If rtResultsTracker.FileList.Count <> Nothing Then
 
             If asAppSettings.AltSingleLineComment.StartsWith("\") Then
-                strTrimmedComment = asAppSettings.AltSingleLineComment.TrimStart("\")
+                strTrimmedComment = asAppSettings.AltSingleLineComment.TrimStart(New Char() {"\"c})
             End If
 
             modMain.ctCodeTracker.ResetCDictionaries()
@@ -246,88 +223,16 @@ Public Class frmMain
                 '
                 'todo: add threading here
                 '
+
+                If Not File.Exists(strItem) Then
+                    Continue For
+                End If
+
                 IncrementLoadingBar(strItem)
-                arrShortName = strItem.Split("\")
-                modMain.ctCodeTracker.Reset()
 
-                ' Check for php.ini file and handle this separately
-                If (asAppSettings.TestType = AppSettings.PHP And arrShortName.Last.ToLower() = "php.ini") And asAppSettings.IsConfigOnly = False Then
-
-                    ctCodeTracker.HasDisableFunctions = False
-
-                    For Each strLine In File.ReadAllLines(strItem)
-                        CheckPhpIni(strLine, strItem)
-                    Next
-
-                    If ctCodeTracker.HasDisableFunctions = True Then
-                        ListCodeIssue("Failure to use 'disable_functions'", "The ini file fails to use the 'disable_functions' feature, greatly increasing the segverity of a successful compromise.", strItem)
-                    End If
-
-
-                Else
-
-                    ' Otherwise split the line into code and comments and scan each part
-                    For Each strLine In File.ReadAllLines(strItem)
-
-                        rtResultsTracker.OverallLineCount += 1
-                        rtResultsTracker.LineCount += 1
-
-                        If strLine.Trim() <> "" Then            ' Check that it's not a blank line
-                            If blnIsCommented = False Then      ' Check whether we're already inside a comment block
-
-                                ' Multiple conditions for single line comments.
-                                ' A lot of the difficulties caused by VB and PHP which have two types of single line comment 
-                                ' and VB/COBOL which have no multiple line comment.
-
-                                If asAppSettings.TestType = AppSettings.COBOL And (strLine.TrimStart.Substring(0, 1) = asAppSettings.SingleLineComment Or Regex.IsMatch(strLine, "^(\s*\d{6}\s*)\*")) Then
-                                    ' COBOL's system for whole-line comments is simpler than other languages
-                                    strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.SingleLineComment, blnIsColoured)
-                                ElseIf ((strLine.Contains(asAppSettings.SingleLineComment) And asAppSettings.SingleLineComment = "//" And Not strLine.ToLower.Contains("http:" + asAppSettings.SingleLineComment))) _
-                                                                Or (asAppSettings.TestType = AppSettings.SQL And strLine.Contains(asAppSettings.SingleLineComment)) Or (asAppSettings.TestType = AppSettings.VB And strLine.Contains(asAppSettings.SingleLineComment) And Not (strLine.Contains("""") And (InStr(strLine, """") < InStr(strLine, "'")))) Then
-                                    strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.SingleLineComment, blnIsColoured)
-                                ElseIf (asAppSettings.AltSingleLineComment.Trim() <> "" And Regex.IsMatch(strLine, "\b" & asAppSettings.AltSingleLineComment & "\b")) Then
-                                    strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, strTrimmedComment, blnIsColoured)
-                                ElseIf ((Not asAppSettings.TestType = AppSettings.VB) And (strLine.Contains(asAppSettings.BlockStartComment) And strLine.Contains(asAppSettings.BlockEndComment)) And (InStr(strLine, asAppSettings.BlockStartComment) < InStr(strLine, asAppSettings.BlockEndComment)) And Not (strLine.Contains("/*/"))) Then
-                                    strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, "both", blnIsColoured)
-                                ElseIf (Not asAppSettings.TestType = AppSettings.VB) And (strLine.Contains(asAppSettings.BlockStartComment) And Not (strLine.Contains("/*/")) And Not (strLine.Contains("print") And (InStr(strLine, asAppSettings.BlockStartComment) > InStr(strLine, "print")))) Then
-                                    blnIsCommented = True
-                                    strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.BlockStartComment, blnIsColoured)
-                                Else
-                                    rtResultsTracker.OverallCodeCount += 1
-                                    rtResultsTracker.CodeCount += 1
-
-                                    ' Scan code for dangerous functions
-                                    CheckCode(strLine, strItem)
-                                End If
-
-                            ElseIf (Not asAppSettings.TestType = AppSettings.VB) And strLine.Contains(asAppSettings.BlockEndComment) Then    ' End of a comment block
-                                blnIsCommented = False
-                                strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.BlockEndComment, blnIsColoured)
-                            Else
-                                rtResultsTracker.CommentCount += 1
-                                rtResultsTracker.OverallCommentCount += 1
-                            End If
-
-                        Else
-                            '== If we have whitespace then add it to the whitespace count ==
-                            rtResultsTracker.OverallWhitespaceCount += 1
-                            rtResultsTracker.WhitespaceCount += 1
-                        End If
-                    Next
-
-                    '== List any file-level code issues (mis-matched deletes, mallocs, etc.) ==
-                    If asAppSettings.TestType = AppSettings.C Or asAppSettings.TestType = AppSettings.JAVA Then CheckFileLevelIssues(strItem)
-                End If
-
-                '== Update graphs and tables ==
-                If asAppSettings.IsConsole = False Then
-                    UpdateGraphs(strItem, arrShortName, blnIsColoured)
-                    blnIsColoured = False
-                Else
-                    If asAppSettings.IsVerbose = True Then Console.WriteLine("Scanning file: " & strItem)
-                End If
-                rtResultsTracker.FileCount += 1
-                rtResultsTracker.ResetFileCountVars()
+                Dim t As Task = Task.Factory.StartNew(Sub() ScanFileWrapper(CommentScan, CodeScan, strTrimmedComment, strItem))
+                t.WaitAll()
+                'ScanFileWrapper(CommentScan, CodeScan, strTrimmedComment, strItem)
 
                 '== Avoid the GUI locking or hanging during processing ==
                 Application.DoEvents()
@@ -351,6 +256,94 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub ScanFileWrapper(CommentScan As Boolean, CodeScan As Boolean, strTrimmedComment As String, strItem As String)
+        Dim arrShortName() As String
+        Dim strLine As String
+        Dim strScanResult As String = ""
+        Dim blnIsCommented As Boolean = False
+        Dim blnIsColoured As Boolean = False
+
+        arrShortName = strItem.Split(New Char() {"\"c})
+        modMain.ctCodeTracker.Reset()
+
+        ' Check for php.ini file and handle this separately
+        If (asAppSettings.TestType = AppSettings.PHP And arrShortName.Last.ToLower() = "php.ini") And asAppSettings.IsConfigOnly = False Then
+
+            ctCodeTracker.HasDisableFunctions = False
+
+            For Each strLine In File.ReadAllLines(strItem)
+                CheckPhpIni(strLine, strItem)
+            Next
+
+            If ctCodeTracker.HasDisableFunctions = True Then
+                ListCodeIssue("Failure to use 'disable_functions'", "The ini file fails to use the 'disable_functions' feature, greatly increasing the segverity of a successful compromise.", strItem)
+            End If
+
+
+        Else
+            ' Otherwise split the line into code and comments and scan each part
+            For Each strLine In File.ReadAllLines(strItem)
+                rtResultsTracker.OverallLineCount += 1
+                rtResultsTracker.LineCount += 1
+
+                If Not String.IsNullOrWhiteSpace(strLine) Then ' Check that it's not a blank line      
+                    If blnIsCommented = False Then      ' Check whether we're already inside a comment block
+
+                        ' Multiple conditions for single line comments.
+                        ' A lot of the difficulties caused by VB and PHP which have two types of single line comment 
+                        ' and VB/COBOL which have no multiple line comment.
+
+                        If asAppSettings.TestType = AppSettings.COBOL And (strLine.TrimStart.Substring(0, 1) = asAppSettings.SingleLineComment Or Regex.IsMatch(strLine, "^(\s*\d{6}\s*)\*")) Then
+                            ' COBOL's system for whole-line comments is simpler than other languages
+                            strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.SingleLineComment, blnIsColoured).ToString()
+                        ElseIf ((strLine.Contains(asAppSettings.SingleLineComment) And asAppSettings.SingleLineComment = "//" And Not strLine.ToLower.Contains("http:" + asAppSettings.SingleLineComment))) _
+                                                        Or (asAppSettings.TestType = AppSettings.SQL And strLine.Contains(asAppSettings.SingleLineComment)) Or (asAppSettings.TestType = AppSettings.VB And strLine.Contains(asAppSettings.SingleLineComment) And Not (strLine.Contains("""") And (InStr(strLine, """") < InStr(strLine, "'")))) Then
+                            strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.SingleLineComment, blnIsColoured).ToString()
+                        ElseIf (asAppSettings.AltSingleLineComment.Trim() <> "" And Regex.IsMatch(strLine, "\b" & asAppSettings.AltSingleLineComment & "\b")) Then
+                            strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, strTrimmedComment, blnIsColoured).ToString()
+                        ElseIf ((Not asAppSettings.TestType = AppSettings.VB) And (strLine.Contains(asAppSettings.BlockStartComment) And strLine.Contains(asAppSettings.BlockEndComment)) And (InStr(strLine, asAppSettings.BlockStartComment) < InStr(strLine, asAppSettings.BlockEndComment)) And Not (strLine.Contains("/*/"))) Then
+                            strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, "both", blnIsColoured).ToString()
+                        ElseIf (Not asAppSettings.TestType = AppSettings.VB) And (strLine.Contains(asAppSettings.BlockStartComment) And Not (strLine.Contains("/*/")) And Not (strLine.Contains("print") And (InStr(strLine, asAppSettings.BlockStartComment) > InStr(strLine, "print")))) Then
+                            blnIsCommented = True
+                            strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.BlockStartComment, blnIsColoured).ToString()
+                        Else
+                            rtResultsTracker.OverallCodeCount += 1
+                            rtResultsTracker.CodeCount += 1
+
+                            ' Scan code for dangerous functions
+                            CheckCode(strLine, strItem)
+                        End If
+
+                    ElseIf (Not asAppSettings.TestType = AppSettings.VB) And strLine.Contains(asAppSettings.BlockEndComment) Then    ' End of a comment block
+                        blnIsCommented = False
+                        strScanResult = ScanLine(CommentScan, CodeScan, strLine, strItem, asAppSettings.BlockEndComment, blnIsColoured).ToString()
+                    Else
+                        rtResultsTracker.CommentCount += 1
+                        rtResultsTracker.OverallCommentCount += 1
+                    End If
+
+                Else
+                    '== If we have whitespace then add it to the whitespace count ==
+                    rtResultsTracker.OverallWhitespaceCount += 1
+                    rtResultsTracker.WhitespaceCount += 1
+                End If
+            Next
+
+            '== List any file-level code issues (mis-matched deletes, mallocs, etc.) ==
+            If asAppSettings.TestType = AppSettings.C Or asAppSettings.TestType = AppSettings.JAVA Then CheckFileLevelIssues(strItem)
+        End If
+
+        '== Update graphs and tables ==
+        If asAppSettings.IsConsole = False Then
+            UpdateGraphs(strItem, arrShortName, blnIsColoured)
+            blnIsColoured = False
+        Else
+            If asAppSettings.IsVerbose = True Then Console.WriteLine("Scanning file: " & strItem)
+        End If
+        rtResultsTracker.FileCount += 1
+        rtResultsTracker.ResetFileCountVars()
+    End Sub
+
     Public Function ScanLine(ByVal CommentScan As Boolean, ByVal CodeScan As Boolean, ByVal CodeLine As String, ByVal FileName As String, ByVal Comment As String, ByRef IsColoured As Boolean) As Boolean
         ' Split the line into comments and code before carrying out the relevant checks
         ' N.B. - InStr has been used as Split requires a single character
@@ -365,7 +358,6 @@ Public Class frmMain
         Dim arrTemp() As String
 
         Dim intPos As Integer
-
 
         '== Split line into comments and code ==
         If Comment = "both" Then
@@ -437,7 +429,7 @@ Public Class frmMain
                 IsColoured = True
 
                 ' Update collection and listbox
-                AddToResultCollection("Comment Indicates Potentially Unfinished Code", "The comment includes some wording which indicates that the developer regards it as unfinished or does not trust it to work correctly.", FileName, CodeIssue.INFO, rtResultsTracker.LineCount, CodeLine)
+                AddToResultCollection("Comment Indicates Potentially Unfinished Code", "The comment includes some wording which indicates that the developer regards it as unfinished or does not trust it to work correctly.", FileName, CodeIssue.INFO, Convert.ToInt32(rtResultsTracker.LineCount), CodeLine)
 
                 Exit For
             End If
@@ -446,7 +438,7 @@ Public Class frmMain
         '== Check for any passwords included in comments ==
         If Regex.IsMatch(CodeLine, "password\s*=") Then
             ' Update collection and listbox
-            AddToResultCollection("Comment Appears to Contain Password", "The comment appears to include a password. If the password is valid then it could allow access to unauthorised users.", FileName, CodeIssue.HIGH, rtResultsTracker.LineCount, CodeLine)
+            AddToResultCollection("Comment Appears to Contain Password", "The comment appears to include a password. If the password is valid then it could allow access to unauthorised users.", FileName, CodeIssue.HIGH, Convert.ToInt32(rtResultsTracker.LineCount), CodeLine)
             blnRetVal = True
         End If
 
@@ -463,7 +455,7 @@ Public Class frmMain
 
         If asAppSettings.OutputLevel < Severity Then Exit Sub
 
-        If LineNumber = 0 Then LineNumber = rtResultsTracker.LineCount
+        If LineNumber = 0 Then LineNumber = Convert.ToInt32(rtResultsTracker.LineCount)
 
         ' Set issue title and description
         strTitle = "Potentially Unsafe Code - " & FunctionName & vbNewLine
@@ -491,7 +483,7 @@ Public Class frmMain
 
         For Each kyKey In IssueDictionary.Keys
             strTitle = "Potential Memory Mis-management. Variable Name: " & kyKey & vbNewLine
-            arrDescriptions = IssueDictionary(kyKey).Split("|")
+            arrDescriptions = IssueDictionary(kyKey).Split(New Char() {"|"c})
 
             For Each strItem In arrDescriptions
                 strDescription &= strItem & vbNewLine
@@ -528,61 +520,67 @@ Public Class frmMain
 
 
             ' Set font style and colour for title
-            rtbResults.Select(lngPosition, Len(Title))
-            rtbResults.SelectionFont = fntTitleFont
+            rtbResults.Invoke(New Action(Sub()
+                                             rtbResults.Select(Convert.ToInt32(lngPosition), Len(Title))
+                                             rtbResults.SelectionFont = fntTitleFont
 
-            If Title.Trim <> "" Then
-                Select Case Severity
-                    Case CodeIssue.CRITICAL
-                        rtbResults.SelectionColor = Color.Purple
-                        Title = "CRITICAL: " & Title
-                    Case CodeIssue.HIGH
-                        rtbResults.SelectionColor = Color.Red
-                        Title = "HIGH: " & Title
-                    Case CodeIssue.MEDIUM
-                        rtbResults.SelectionColor = Color.Orange
-                        Title = "MEDIUM: " & Title
-                    Case CodeIssue.LOW
-                        rtbResults.SelectionColor = Color.CornflowerBlue
-                        Title = "LOW: " & Title
-                    Case CodeIssue.INFO
-                        rtbResults.SelectionColor = Color.Blue
-                        Title = "SUSPICIOUS COMMENT: " & Title
-                    Case CodeIssue.POSSIBLY_SAFE
-                        rtbResults.SelectionColor = Color.Green
-                        Title = "POTENTIAL ISSUE: " & Title
-                    Case Else
-                        rtbResults.SelectionColor = Color.Goldenrod
-                        Title = "STANDARD: " & Title
-                End Select
+                                             If Title.Trim <> "" Then
+                                                 Select Case Severity
+                                                     Case CodeIssue.CRITICAL
+                                                         rtbResults.SelectionColor = Color.Purple
+                                                         Title = "CRITICAL: " & Title
+                                                     Case CodeIssue.HIGH
+                                                         rtbResults.SelectionColor = Color.Red
+                                                         Title = "HIGH: " & Title
+                                                     Case CodeIssue.MEDIUM
+                                                         rtbResults.SelectionColor = Color.Orange
+                                                         Title = "MEDIUM: " & Title
+                                                     Case CodeIssue.LOW
+                                                         rtbResults.SelectionColor = Color.CornflowerBlue
+                                                         Title = "LOW: " & Title
+                                                     Case CodeIssue.INFO
+                                                         rtbResults.SelectionColor = Color.Blue
+                                                         Title = "SUSPICIOUS COMMENT: " & Title
+                                                     Case CodeIssue.POSSIBLY_SAFE
+                                                         rtbResults.SelectionColor = Color.Green
+                                                         Title = "POTENTIAL ISSUE: " & Title
+                                                     Case Else
+                                                         rtbResults.SelectionColor = Color.Goldenrod
+                                                         Title = "STANDARD: " & Title
+                                                 End Select
 
-                rtbResults.AppendText(Title)
-                lngPosition += Len(Title)
-            End If
+                                                 rtbResults.AppendText(Title)
+                                                 lngPosition += Len(Title)
+                                             End If
 
-            ' Set font style and colour for description
-            rtbResults.Select(lngPosition, Len(Description))
-            rtbResults.SelectionFont = fntTextFont
-            rtbResults.SelectionColor = Color.Black
+                                             ' Set font style and colour for description
+                                             rtbResults.Select(lngPosition, Len(Description))
+                                             rtbResults.SelectionFont = fntTextFont
+                                             rtbResults.SelectionColor = Color.Black
 
-            rtbResults.AppendText(Description)
-            lngPosition += Len(Description)
+                                             rtbResults.AppendText(Description)
+                                             lngPosition += Len(Description)
 
-            ' Set font style and colour for code
-            If CodeLine.Trim <> "" Then
-                CodeLine &= vbNewLine & vbNewLine
+                                             ' Set font style and colour for code
+                                             If CodeLine.Trim <> "" Then
+                                                 CodeLine &= vbNewLine & vbNewLine
 
-                rtbResults.Select(lngPosition, Len(CodeLine))
-                rtbResults.SelectionFont = fntCodeFont
-                rtbResults.SelectionColor = Color.Black
+                                                 rtbResults.Select(lngPosition, Len(CodeLine))
+                                                 rtbResults.SelectionFont = fntCodeFont
+                                                 rtbResults.SelectionColor = Color.Black
 
-                rtbResults.AppendText(CodeLine)
-                lngPosition += Len(CodeLine)
-            Else
-                rtbResults.AppendText(vbNewLine)
-                lngPosition += Len(vbNewLine)
-            End If
+                                                 rtbResults.AppendText(CodeLine)
+                                                 lngPosition += Len(CodeLine)
+                                             Else
+                                                 rtbResults.AppendText(vbNewLine)
+                                                 lngPosition += Len(vbNewLine)
+                                             End If
+
+
+                                         End Sub))
+
         End If
+
 
         '== Write details to output files if required ==
         If asAppSettings.IsOutputFile Then
@@ -620,13 +618,13 @@ Public Class frmMain
         srScanResult.IsChecked = IsChecked
 
         If CheckColour.Contains(",") Then
-            arrInts = CheckColour.Split(",")
+            arrInts = CheckColour.Split(New Char() {","c})
             intR = CInt(arrInts(0))
             intG = CInt(arrInts(1))
             intB = CInt(arrInts(2))
             srScanResult.CheckColour = Color.FromArgb(intR, intG, intB)
         Else
-            srScanResult.CheckColour = ccConverter.ConvertFromString(CheckColour)
+            srScanResult.CheckColour = DirectCast(ccConverter.ConvertFromString(CheckColour), Color)
         End If
 
 
@@ -640,16 +638,16 @@ Public Class frmMain
 
         If Not asAppSettings.IsConsole Then
             '== Add to listview ==
-            lviItem.Name = rtResultsTracker.CurrentIndex
-            lviItem.Text = srScanResult.Severity
+            lviItem.Name = Convert.ToString(rtResultsTracker.CurrentIndex)
+            lviItem.Text = Convert.ToString(srScanResult.Severity)
             lviItem.SubItems.Add(srScanResult.SeverityDesc)
             lviItem.SubItems.Add(Title)
             lviItem.SubItems.Add(Description)
             lviItem.SubItems.Add(FileName)
-            lviItem.SubItems.Add(LineNumber)
+            lviItem.SubItems.Add(Convert.ToString(LineNumber))
 
             lvResults.Items.Add(lviItem)
-            If srScanResult.IsChecked = True Then SetCheckState(lviItem.Name, True, srScanResult.CheckColour)
+            If srScanResult.IsChecked = True Then SetCheckState(Convert.ToInt32(lviItem.Name), True, srScanResult.CheckColour)
         End If
 
         '== Add to results groups ==
@@ -707,9 +705,9 @@ Public Class frmMain
         End Select
 
         For Each srResultItem In rtResultsTracker.ScanResults
-            If (srResultItem.Severity <= intFilterMin And srResultItem.Severity >= intFilterMax) Then
-                strDescription = srResultItem.Description
-                WriteResult(srResultItem.Title & vbNewLine, strDescription & vbNewLine & "Line: " & srResultItem.LineNumber & " - Filename: " & srResultItem.FileName & vbNewLine, srResultItem.CodeLine.Trim, srResultItem.Severity)
+            If (Convert.ToInt32(srResultItem.Severity) <= intFilterMin) And (Convert.ToInt32(srResultItem.Severity) >= intFilterMax) Then
+                strDescription = srResultItem.Description.ToString()
+                WriteResult(srResultItem.Title.ToString() & vbNewLine, strDescription.ToString() & vbNewLine & "Line: " & srResultItem.LineNumber.ToString() & " - Filename: " & srResultItem.FileName.ToString() & vbNewLine, srResultItem.CodeLine.Trim.ToString(), Convert.ToInt32(srResultItem.Severity))
             End If
 
             '== Avoid the GUI locking or hanging during processing ==
@@ -815,23 +813,32 @@ Public Class frmMain
     Public Sub UpdateFileView(ByVal FileDetails As FileData, ByVal Index As Integer, ByVal IsColoured As Boolean)
 
         '== Add results into graphs and tables ==
-        With frmBreakdown.dgvResults
-            .Rows.Add(1)
-            If IsColoured = True Then
-                .DefaultCellStyle.BackColor = Color.Red
-            Else
-                .DefaultCellStyle.BackColor = Color.White
-            End If
-            .Item(0, Index).Value = FileDetails.ShortName
-            .Item(1, Index).Value = FileDetails.LineCount
-            .Item(3, Index).Value = FileDetails.CodeCount
-            .Item(4, Index).Value = FileDetails.CommentCount
-            .Item(5, Index).Value = FileDetails.WhitespaceCount
-            .Item(6, Index).Value = FileDetails.FixMeCount
-            .Item(7, Index).Value = FileDetails.BadFuncCount
-            .Item(8, Index).Value = FileDetails.FileName
-        End With
 
+        'thread safe
+        Try
+
+
+            frmBreakdown.dgvResults.Invoke(New Action(Sub()
+                                                          With frmBreakdown.dgvResults
+                                                              .Rows.Add(1)
+                                                              If IsColoured = True Then
+                                                                  .DefaultCellStyle.BackColor = Color.Red
+                                                              Else
+                                                                  .DefaultCellStyle.BackColor = Color.White
+                                                              End If
+                                                              .Item(0, Index).Value = FileDetails.ShortName
+                                                              .Item(1, Index).Value = FileDetails.LineCount
+                                                              .Item(3, Index).Value = FileDetails.CodeCount
+                                                              .Item(4, Index).Value = FileDetails.CommentCount
+                                                              .Item(5, Index).Value = FileDetails.WhitespaceCount
+                                                              .Item(6, Index).Value = FileDetails.FixMeCount
+                                                              .Item(7, Index).Value = FileDetails.BadFuncCount
+                                                              .Item(8, Index).Value = FileDetails.FileName
+                                                          End With
+                                                      End Sub))
+        Catch ex As Exception
+            'suppress
+        End Try
     End Sub
 
     Public Shared Sub CountFixMeComments(ByVal FileName As String)
@@ -993,7 +1000,7 @@ Public Class frmMain
                 ScanFiles(True, True)
             Else
                 For intIndex = 0 To rtResultsTracker.FileDataList.Count - 1
-                    UpdateFileView(rtResultsTracker.FileDataList.Item(intIndex), intIndex, False)
+                    UpdateFileView(TryCast(rtResultsTracker.FileDataList.Item(intIndex), FileData), intIndex, False)
                 Next
             End If
 
@@ -1005,7 +1012,7 @@ Public Class frmMain
     Private Sub ShowPercentages()
         ' Fill in percentages on the datagram thing 
         '==========================================
-        On Error Resume Next
+        'On Error Resume Next
 
         Dim intIndex As Integer
 
@@ -1042,9 +1049,9 @@ Public Class frmMain
         End With
 
         '== Show percentage breakdowns ==
-        frmBreakdown.lblResults.Text = rtResultsTracker.OverallLineCount & " Lines: " & vbNewLine & rtResultsTracker.OverallCommentCount & _
-            " Comments (~" & Math.Round(Math.Abs((rtResultsTracker.OverallCommentCount / rtResultsTracker.OverallLineCount) * 100), 1) & "%)" & vbNewLine & rtResultsTracker.OverallWhitespaceCount & _
-            " Lines of Whitespace (~" & Math.Round(Math.Abs((rtResultsTracker.OverallWhitespaceCount / rtResultsTracker.OverallLineCount) * 100), 1) & "%)" & vbNewLine & rtResultsTracker.OverallLineCount - (rtResultsTracker.OverallCommentCount + rtResultsTracker.OverallWhitespaceCount) & _
+        frmBreakdown.lblResults.Text = rtResultsTracker.OverallLineCount & " Lines: " & vbNewLine & rtResultsTracker.OverallCommentCount &
+            " Comments (~" & Math.Round(Math.Abs((rtResultsTracker.OverallCommentCount / rtResultsTracker.OverallLineCount) * 100), 1) & "%)" & vbNewLine & rtResultsTracker.OverallWhitespaceCount &
+            " Lines of Whitespace (~" & Math.Round(Math.Abs((rtResultsTracker.OverallWhitespaceCount / rtResultsTracker.OverallLineCount) * 100), 1) & "%)" & vbNewLine & rtResultsTracker.OverallLineCount - (rtResultsTracker.OverallCommentCount + rtResultsTracker.OverallWhitespaceCount) &
             " Lines of Code (including comment-appended code) (~" & (100 - ((Math.Round(Math.Abs((rtResultsTracker.OverallCommentCount / rtResultsTracker.OverallLineCount) * 100), 1) + Math.Round(Math.Abs((rtResultsTracker.OverallWhitespaceCount / rtResultsTracker.OverallLineCount) * 100), 1)))) & "%)"
 
     End Sub
@@ -1069,7 +1076,7 @@ Public Class frmMain
             ScanFiles(False, True)
         Else
             For intIndex = 0 To rtResultsTracker.FileDataList.Count - 1
-                UpdateFileView(rtResultsTracker.FileDataList.Item(intIndex), intIndex, False)
+                UpdateFileView(TryCast(rtResultsTracker.FileDataList.Item(intIndex), FileData), intIndex, False)
             Next
         End If
 
@@ -1117,7 +1124,7 @@ Public Class frmMain
             ScanFiles(True, False)
         Else
             For intIndex = 0 To rtResultsTracker.FileDataList.Count - 1
-                UpdateFileView(rtResultsTracker.FileDataList.Item(intIndex), intIndex, False)
+                UpdateFileView(TryCast(rtResultsTracker.FileDataList.Item(intIndex), FileData), intIndex, False)
             Next
         End If
 
@@ -1141,7 +1148,7 @@ Public Class frmMain
             ScanFiles(True, False)
         Else
             For intIndex = 0 To rtResultsTracker.FileDataList.Count - 1
-                UpdateFileView(rtResultsTracker.FileDataList.Item(intIndex), intIndex, False)
+                UpdateFileView(TryCast(rtResultsTracker.FileDataList.Item(intIndex), FileData), intIndex, False)
             Next
         End If
 
@@ -1184,19 +1191,19 @@ Public Class frmMain
         ' Is the main Window visible or not?
         If asAppSettings.IsConsole = False Then
             ' Save window size and location to Registry
-            SaveSetting("VisualCodeGrepper", "FormLocation", "Top", Me.Top)
-            SaveSetting("VisualCodeGrepper", "FormLocation", "Left", Me.Left)
-            SaveSetting("VisualCodeGrepper", "FormSize", "Height", Me.Height)
-            SaveSetting("VisualCodeGrepper", "FormSize", "Width", Me.Width)
+            SaveSetting("VisualCodeGrepper", "FormLocation", "Top", Convert.ToString(Me.Top))
+            SaveSetting("VisualCodeGrepper", "FormLocation", "Left", Convert.ToString(Me.Left))
+            SaveSetting("VisualCodeGrepper", "FormSize", "Height", Convert.ToString(Me.Height))
+            SaveSetting("VisualCodeGrepper", "FormSize", "Width", Convert.ToString(Me.Width))
 
             ' Save previous filenames to Registry 
             For intIndex = 0 To 4
-                SaveSetting("VisualCodeGrepper", "Startup", "Target" & intIndex, cboTargetDir.Items().Item(intIndex))
+                SaveSetting("VisualCodeGrepper", "Startup", "Target" & intIndex, cboTargetDir.Items().Item(intIndex).ToString())
             Next intIndex
         End If
 
         ' Save Language and test settings to registry
-        SaveSetting("VisualCodeGrepper", "Startup", "Language", asAppSettings.StartType)
+        SaveSetting("VisualCodeGrepper", "Startup", "Language", Convert.ToString(asAppSettings.StartType))
         SaveSetting("VisualCodeGrepper", "Startup", "CConfFile", asAppSettings.CConfFile)
         SaveSetting("VisualCodeGrepper", "Startup", "JavaConfFile", asAppSettings.JavaConfFile)
         SaveSetting("VisualCodeGrepper", "Startup", "PLSQLConfFile", asAppSettings.PLSQLConfFile)
@@ -1235,7 +1242,7 @@ Public Class frmMain
         LoadBadComments()
 
         ' Get Language and test settings from registry
-        asAppSettings.TestType = GetSetting("VisualCodeGrepper", "Startup", "Language", "0")
+        asAppSettings.TestType = Convert.ToInt32(GetSetting("VisualCodeGrepper", "Startup", "Language", "0"))
         asAppSettings.CConfFile = GetSetting("VisualCodeGrepper", "Startup", "CConfFile", Application.StartupPath & "\cppfunctions.conf")
         asAppSettings.JavaConfFile = GetSetting("VisualCodeGrepper", "Startup", "JavaConfFile", Application.StartupPath & "\javafunctions.conf")
         asAppSettings.PLSQLConfFile = GetSetting("VisualCodeGrepper", "Startup", "PLSQLConfFile", Application.StartupPath & "\plsqlfunctions.conf")
@@ -1254,10 +1261,10 @@ Public Class frmMain
         AddContextMenu()
 
         ' Get previous window size and location from Registry
-        Me.Top = GetSetting("VisualCodeGrepper", "FormLocation", "Top", "50")
-        Me.Left = GetSetting("VisualCodeGrepper", "FormLocation", "Left", "100")
-        Me.Height = GetSetting("VisualCodeGrepper", "FormSize", "Height", "515")
-        Me.Width = GetSetting("VisualCodeGrepper", "FormSize", "Width", "835")
+        Me.Top = Convert.ToInt32(GetSetting("VisualCodeGrepper", "FormLocation", "Top", "50"))
+        Me.Left = Convert.ToInt32(GetSetting("VisualCodeGrepper", "FormLocation", "Left", "100"))
+        Me.Height = Convert.ToInt32(GetSetting("VisualCodeGrepper", "FormSize", "Height", "515"))
+        Me.Width = Convert.ToInt32(GetSetting("VisualCodeGrepper", "FormSize", "Width", "835"))
 
         ' Reset any bad/corrupted registry entries
         If (Me.Top < 0) Or (Me.Top > Screen.PrimaryScreen.Bounds.Height - 50) Then Me.Top = 50
@@ -1307,7 +1314,7 @@ Public Class frmMain
         If e.Data.GetDataPresent(DataFormats.FileDrop) Then
 
             ' Assign dragged files to array of filenames
-            arrFiles = e.Data.GetData(DataFormats.FileDrop)
+            arrFiles = DirectCast(e.Data.GetData(DataFormats.FileDrop, False), String())
 
             ' Assign first name in list to combo box
             cboTargetDir.Text = arrFiles(0)
@@ -1330,9 +1337,12 @@ Public Class frmMain
         '====================================================================================
 
         If e.KeyCode = Keys.Enter Then
-            LoadFiles(cboTargetDir.Text)
+            If Directory.Exists(cboTargetDir.Text) Then
+                LoadFiles(cboTargetDir.Text)
+            Else
+                MessageBox.Show("<{0}> does not exist.", cboTargetDir.Text)
+            End If
         End If
-
     End Sub
 
     Private Sub lbTargets_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lbTargets.SelectedIndexChanged
@@ -1356,6 +1366,8 @@ Public Class frmMain
         If TargetFolder = "" Or TargetFolder = rtResultsTracker.TargetDirectory Then Exit Sub
 
         If ClearPrevious Then ClearResults()
+        cboTargetDir.Text = TargetFolder
+
 
         Try
             ' Check whether we have a file or directory
@@ -1365,32 +1377,22 @@ Public Class frmMain
                 Dim di As DirectoryInfo = New DirectoryInfo(TargetFolder)
                 objResults = thrdFileCollector.CollectFiles(di, "*.*")
 
-                'objResults = Directory.EnumerateFiles(TargetFolder, "*.*", SearchOption.AllDirectories)
-
-                Dim lstResults As List(Of String) = New List(Of String)(Directory.EnumerateFiles(TargetFolder, "*.*", SearchOption.AllDirectories))
                 If asAppSettings.IsConsole = False Then
-                    ShowLoading("Loading files from target directory...", lstResults.Count)
+                    ShowLoading("Loading files from target directory...", Convert.ToInt32(objResults.Count))
                 Else
                     Console.WriteLine("Loading files from target directory...")
                     Console.WriteLine()
                 End If
-            Else
+            ElseIf File.Exists(TargetFolder) Then
                 objResults = New Collection
                 objResults.Add(TargetFolder)
+            Else
+                'this is not an existing file or folder
+                Return
             End If
 
-            For Each objTargetFile In objResults
-                If asAppSettings.IsAllFileTypes Or CheckFileType(objTargetFile) = True Then
-                    rtResultsTracker.FileList.Add(objTargetFile)
-                    If asAppSettings.IsConsole = False Then
-                        IncrementLoadingBar("Checking files...")
-                    Else
-                        If asAppSettings.IsVerbose = True Then Console.WriteLine("Checking file: " & objTargetFile)
-                    End If
-                End If
-
-                '== Avoid the GUI locking or hanging during processing ==
-                Application.DoEvents()
+            For Each objTargetFile In TryCast(objResults, IEnumerable)
+                rtResultsTracker.FileList.Add(objTargetFile)
             Next
 
             If asAppSettings.IsConsole = False Then
@@ -1624,8 +1626,8 @@ Public Class frmMain
         For Each objResult In rtResultsTracker.ScanResults
 
             strKey = objResult.ItemKey.ToString
-            strTitle = objResult.Title
-            strFileName = objResult.FileName
+            strTitle = Convert.ToString(objResult.Title)
+            strFileName = Convert.ToString(objResult.FileName)
 
             If lvResults.Items.ContainsKey(strKey) Then
                 If lvResults.Items(strKey).Selected = True Then
@@ -1637,12 +1639,12 @@ Public Class frmMain
                     ' Remove from groups
                     ' If groups are empty they should be deleted
                     If rtResultsTracker.FileGroups.ContainsKey(strFileName) Then
-                        rtResultsTracker.FileGroups(strFileName).DeleteDetail(strKey)
+                        rtResultsTracker.FileGroups(strFileName).DeleteDetail(Convert.ToInt32(strKey))
                         If rtResultsTracker.FileGroups(strFileName).GetItemCount = 0 Then rtResultsTracker.FileGroups.Remove(strFileName)
                     End If
 
                     If rtResultsTracker.IssueGroups.ContainsKey(strTitle) Then
-                        rtResultsTracker.IssueGroups(strTitle).DeleteDetail(strKey)
+                        rtResultsTracker.IssueGroups(strTitle).DeleteDetail(Convert.ToInt32(strKey))
                         If rtResultsTracker.IssueGroups(strTitle).GetItemCount = 0 Then rtResultsTracker.IssueGroups.Remove(strTitle)
                     End If
 
@@ -1666,7 +1668,7 @@ Public Class frmMain
 
         arrDeleteItems.Sort()
         For intIndex = arrDeleteItems.Count - 1 To 0 Step -1
-            rtResultsTracker.ScanResults.RemoveAt(arrDeleteItems.Item(intIndex))
+            rtResultsTracker.ScanResults.RemoveAt(Convert.ToInt32(arrDeleteItems.Item(intIndex)))
         Next intIndex
 
 
@@ -1824,7 +1826,7 @@ Public Class frmMain
 
         ' Get the filename and line number from the table
         strFileName = lvResults.SelectedItems.Item(0).SubItems(FILE_COL).Text
-        intLineNum = lvResults.SelectedItems.Item(0).SubItems(LINE_COL).Text
+        intLineNum = Convert.ToInt32(lvResults.SelectedItems.Item(0).SubItems(LINE_COL).Text)
 
         ' If we have a file, try to open it in its associated application
         If strFileName <> "" Then
@@ -1887,7 +1889,7 @@ Public Class frmMain
 
                 Process.Start(psiStart)
             Catch
-                DisplayError("Error reading file: " & strFileName, vbExclamation, "File Error")
+                DisplayError("Error reading file: " & strFileName, "File Error", MsgBoxStyle.Exclamation)
             End Try
         End If
 
@@ -1903,23 +1905,23 @@ Public Class frmMain
         SortResults(e.Column)
 
         For Each itmItem In rtResultsTracker.ScanResults
-            If Not blnIsFiltered Or (blnIsFiltered And itmItem.Severity >= intFilterMax And itmItem.Severity <= intFilterMin) Then
+            If Not blnIsFiltered Or (blnIsFiltered And Convert.ToInt32(itmItem.Severity) >= intFilterMax And Convert.ToInt32(itmItem.Severity) <= intFilterMin) Then
                 lviItem = New ListViewItem
 
                 colOriginalColour = asAppSettings.ListItemColour
 
                 '== Add to listview ==
-                lviItem.Name = itmItem.ItemKey
-                lviItem.Text = itmItem.Severity
+                lviItem.Name = Convert.ToString(itmItem.ItemKey)
+                lviItem.Text = Convert.ToString(itmItem.Severity)
                 lviItem.SubItems.Add(itmItem.SeverityDesc)
                 lviItem.SubItems.Add(itmItem.Title)
                 lviItem.SubItems.Add(itmItem.Description)
                 lviItem.SubItems.Add(itmItem.FileName)
                 lviItem.SubItems.Add(itmItem.LineNumber)
 
-                If itmItem.IsChecked Then
-                    asAppSettings.ListItemColour = itmItem.CheckColour
-                    lviItem.Checked = itmItem.IsChecked
+                If Convert.ToBoolean(itmItem.IsChecked) Then
+                    asAppSettings.ListItemColour = DirectCast(itmItem.CheckColour, Color)
+                    lviItem.Checked = Convert.ToBoolean(itmItem.IsChecked)
                 End If
 
                 lvResults.Items.Add(lviItem)
@@ -2101,42 +2103,42 @@ Public Class frmMain
 
                 ' Loop through issues and write data for each one
                 For Each itmItem In rtResultsTracker.ScanResults
-                    If (itmItem.Severity <= FilterMinimum And itmItem.Severity >= FilterMaximum) Then
+                    If (Convert.ToInt32(itmItem.Severity) <= FilterMinimum And Convert.ToInt32(itmItem.Severity) >= FilterMaximum) Then
 
 
                         .WriteStartElement("CodeIssue")
 
                         .WriteStartElement("Priority")
-                        .WriteString(itmItem.Severity)
+                        .WriteString(Convert.ToString(itmItem.Severity))
                         .WriteEndElement()
 
                         .WriteStartElement("Severity")
-                        .WriteString(itmItem.SeverityDesc)
+                        .WriteString(Convert.ToString(itmItem.SeverityDesc))
                         .WriteEndElement()
 
                         .WriteStartElement("Title")
-                        .WriteString(itmItem.Title)
+                        .WriteString(Convert.ToString(itmItem.Title))
                         .WriteEndElement()
 
                         .WriteStartElement("Description")
-                        .WriteString(itmItem.Description)
+                        .WriteString(Convert.ToString(itmItem.Description))
                         .WriteEndElement()
 
                         .WriteStartElement("FileName")
-                        .WriteString(itmItem.FileName)
+                        .WriteString(Convert.ToString(itmItem.FileName))
                         .WriteEndElement()
 
                         .WriteStartElement("Line")
-                        .WriteString(itmItem.LineNumber)
+                        .WriteString(Convert.ToString(itmItem.LineNumber))
                         .WriteEndElement()
 
                         .WriteStartElement("CodeLine")
-                        .WriteString(itmItem.CodeLine)
+                        .WriteString(Convert.ToString(itmItem.CodeLine))
                         .WriteEndElement()
 
                         If SaveCheckState Then
                             .WriteStartElement("Checked")
-                            .WriteString(itmItem.IsChecked)
+                            .WriteString(Convert.ToString(itmItem.IsChecked))
                             .WriteEndElement()
                             .WriteStartElement("CheckColour")
                             .WriteString(ccConverter.ConvertToString(itmItem.CheckColour))
@@ -2224,7 +2226,7 @@ Public Class frmMain
 
             '== Display progress to screen as appropriate ==
             If asAppSettings.IsConsole = False Then
-                ShowLoading("Importing results from XML file...", fiFileInfo.Length)
+                ShowLoading("Importing results from XML file...", Convert.ToInt32(fiFileInfo.Length))
             ElseIf asAppSettings.IsConsole = True And asAppSettings.IsVerbose Then
                 Console.WriteLine("Importing results from XML file. File size: " & fiFileInfo.Length)
             End If
@@ -2244,14 +2246,14 @@ Public Class frmMain
                         If (.Name = "Title") Then srResultItem.Title = .ReadInnerXml.ToString()
                         If (.Name = "Description") Then srResultItem.Description = .ReadInnerXml.ToString()
                         If (.Name = "FileName") Then srResultItem.FileName = .ReadInnerXml.ToString()
-                        If (.Name = "Line") Then srResultItem.LineNumber = .ReadInnerXml.ToString()
+                        If (.Name = "Line") Then srResultItem.LineNumber = Convert.ToInt32(.ReadInnerXml.ToString())
                         If (.Name = "CodeLine") Then srResultItem.CodeLine = .ReadInnerXml.ToString()
                         If (.Name = "Checked") Then srResultItem.IsChecked = Convert.ToBoolean(.ReadInnerXml.ToString())
 
                         If (.Name = "CheckColour") Then
                             strColour = .ReadInnerXml.ToString()
                             If strColour.Contains(",") Then
-                                arrInts = strColour.Split(",")
+                                arrInts = strColour.Split(New Char() {","c})
                                 intR = CInt(arrInts(0))
                                 intG = CInt(arrInts(1))
                                 intB = CInt(arrInts(2))
@@ -2344,12 +2346,12 @@ Public Class frmMain
 
                 ' Loop through issues and write data for each one
                 For Each itmItem In rtResultsTracker.ScanResults
-                    If (itmItem.Severity <= FilterMinimum And itmItem.Severity >= FilterMaximum) Then
+                    If (Convert.ToInt32(itmItem.Severity) <= FilterMinimum And Convert.ToInt32(itmItem.Severity) >= FilterMaximum) Then
 
                         ' Sanitise free-form text to prevent quotes from breaking things
-                        strDescription = itmItem.Description.Replace("""", """""")
-                        strCodeLine = itmItem.CodeLine.Replace("""", """""")
-                        strDescription = itmItem.Description.Replace(vbNewLine, "")
+                        strDescription = itmItem.Description.ToString().Replace("""", """""")
+                        strCodeLine = itmItem.CodeLine.ToString().Replace("""", """""")
+                        strDescription = itmItem.Description.ToString().Replace(vbNewLine, "")
 
 
                         If SaveCheckState Then
@@ -2426,7 +2428,7 @@ Public Class frmMain
 
                 '== Display progress to screen as appropriate ==
                 If asAppSettings.IsConsole = False Then
-                    ShowLoading("Importing results from CSV file...", fiFileInfo.Length)
+                    ShowLoading("Importing results from CSV file...", Convert.ToInt32(fiFileInfo.Length))
                 ElseIf asAppSettings.IsConsole = True And asAppSettings.IsVerbose Then
                     Console.WriteLine("Importing results from CSV file. File size: " & fiFileInfo.Length)
                 End If
@@ -2446,13 +2448,13 @@ Public Class frmMain
                             srResultItem.Title = arrItems(2)
                             srResultItem.Description = arrItems(3)
                             srResultItem.FileName = arrItems(4)
-                            srResultItem.LineNumber = arrItems(5)
+                            srResultItem.LineNumber = Convert.ToInt32(arrItems(5))
                             srResultItem.CodeLine = arrItems(6)
 
                             If arrItems.Length = 9 Then
                                 srResultItem.IsChecked = Convert.ToBoolean(arrItems(7))
                                 If arrItems(8).Contains(",") Then
-                                    arrInts = arrItems(8).Split(",")
+                                    arrInts = arrItems(8).Split(New Char() {","c})
                                     intR = CInt(arrInts(0))
                                     intG = CInt(arrInts(1))
                                     intB = CInt(arrInts(2))
@@ -2516,18 +2518,18 @@ Public Class frmMain
 
         '== Write out the new results ==
         For Each srResultItem In rtResultsTracker.ScanResults
-            If srResultItem.Severity >= FilterMaximum And srResultItem.Severity <= FilterMinimum Then
+            If Convert.ToInt32(srResultItem.Severity) >= FilterMaximum And Convert.ToInt32(srResultItem.Severity) <= FilterMinimum Then
 
                 asAppSettings.ListItemColour = colOriginalColour
 
                 '== Add to rich text ==
-                strDescription = srResultItem.Description
-                WriteResult(srResultItem.Title & vbNewLine, strDescription & vbNewLine & "Line: " & srResultItem.LineNumber & " - Filename: " & srResultItem.FileName & vbNewLine, srResultItem.CodeLine.Trim, srResultItem.Severity)
+                strDescription = Convert.ToString(srResultItem.Description)
+                WriteResult(Convert.ToString(srResultItem.Title) & vbNewLine, Convert.ToString(strDescription) & vbNewLine & "Line: " & Convert.ToString(srResultItem.LineNumber) & " - Filename: " & Convert.ToString(srResultItem.FileName) & vbNewLine, Convert.ToString(srResultItem.CodeLine.Trim), Convert.ToInt32(srResultItem.Severity))
 
                 '== Add to listview ==
                 lviItem = New ListViewItem
-                lviItem.Name = srResultItem.ItemKey
-                lviItem.Text = srResultItem.Severity
+                lviItem.Name = Convert.ToString(srResultItem.ItemKey)
+                lviItem.Text = Convert.ToString(srResultItem.Severity)
                 lviItem.SubItems.Add(srResultItem.SeverityDesc)
                 lviItem.SubItems.Add(srResultItem.Title)
                 lviItem.SubItems.Add(srResultItem.Description)
@@ -2536,8 +2538,8 @@ Public Class frmMain
 
 
                 If srResultItem.IsChecked = True Then
-                    asAppSettings.ListItemColour = Color.FromName(srResultItem.CheckColour)
-                    lviItem.Checked = srResultItem.IsChecked
+                    asAppSettings.ListItemColour = Color.FromName(Convert.ToString(srResultItem.CheckColour))
+                    lviItem.Checked = Convert.ToBoolean(srResultItem.IsChecked)
                 End If
 
                 lvResults.Items.Add(lviItem)
@@ -2551,7 +2553,7 @@ Public Class frmMain
         '=========================
 
         '== Set item state for saves/sorts/etc. ==
-        SetCheckState(Convert.ToInt32(lvResults.Items(e.Index).Name), e.NewValue, asAppSettings.ListItemColour)
+        SetCheckState(Convert.ToInt32(lvResults.Items(e.Index).Name), Convert.ToBoolean(e.NewValue), asAppSettings.ListItemColour)
 
     End Sub
 
@@ -2566,7 +2568,7 @@ Public Class frmMain
                 itmItem.IsChecked = Value
 
                 ' If the listview items have been sorted then they should be identified with their name, not index
-                intIndex = lvResults.Items.IndexOfKey(Index)
+                intIndex = lvResults.Items.IndexOfKey(Convert.ToString(Index))
 
                 ' Apply the appropriate colour to the listview item
                 If Value Then
@@ -2644,14 +2646,14 @@ Public Class frmMain
 
             For Each itmItem In rtResultsTracker.ScanResults
 
-                If Not blnIsFiltered Or (blnIsFiltered And itmItem.Severity >= intFilterMax And itmItem.Severity <= intFilterMin) Then
+                If Not blnIsFiltered Or (blnIsFiltered And Convert.ToInt32(itmItem.Severity) >= intFilterMax And Convert.ToInt32(itmItem.Severity) <= intFilterMin) Then
                     lviItem = New ListViewItem
 
                     asAppSettings.ListItemColour = colOriginalColour
 
                     '== Add to listview ==
-                    lviItem.Name = itmItem.ItemKey
-                    lviItem.Text = itmItem.Severity
+                    lviItem.Name = Convert.ToString(itmItem.ItemKey)
+                    lviItem.Text = Convert.ToString(itmItem.Severity)
                     lviItem.SubItems.Add(itmItem.SeverityDesc)
                     lviItem.SubItems.Add(itmItem.Title)
                     lviItem.SubItems.Add(itmItem.Description)
@@ -2659,8 +2661,8 @@ Public Class frmMain
                     lviItem.SubItems.Add(itmItem.LineNumber)
 
                     If itmItem.IsChecked = True Then
-                        asAppSettings.ListItemColour = itmItem.CheckColour
-                        lviItem.Checked = itmItem.IsChecked
+                        asAppSettings.ListItemColour = DirectCast(itmItem.CheckColour, Color)
+                        lviItem.Checked = Convert.ToBoolean(itmItem.IsChecked)
                     End If
 
                     lvResults.Items.Add(lviItem)
@@ -2754,12 +2756,39 @@ Public Class frmMain
         End Function
 
         Private Sub InternalCollectFiles(directory As DirectoryInfo, pattern As String, queue As ConcurrentQueue(Of String))
-            For Each result As String In directory.GetFiles(pattern).[Select](Function(file) file.FullName)
-                queue.Enqueue(result)
-            Next
-
-            Task.WaitAll(directory.GetDirectories().[Select](Function(dir) Task.Factory.StartNew(Sub() InternalCollectFiles(dir, pattern, queue))).ToArray())
+            Try
+                For Each result As String In directory.GetFiles(pattern).[Select](Function(file) file.FullName)
+                    If asAppSettings.IsAllFileTypes Or CheckFileType(result) = True Then
+                        queue.Enqueue(result)
+                    End If
+                Next
+                Task.WaitAll(directory.GetDirectories().[Select](Function(dir) Task.Factory.StartNew(Sub() InternalCollectFiles(dir, pattern, queue))).ToArray())
+            Catch ex As System.IO.PathTooLongException
+                'suppress
+                queue.Enqueue(ex.Message.ToString())
+            End Try
         End Sub
+
+
+        Private Function CheckFileType(ByVal TargetFile As Object) As Boolean
+            ' Check file type is consistent with required language
+            '=====================================================
+            Dim blnRetVal As Boolean = False
+
+
+            '== Iterate through suffix array and compare to the end of current filename ==
+            For intIndex = 0 To asAppSettings.NumSuffixes
+                Dim sCurSuffix As String = asAppSettings.FileSuffixes(intIndex).ToString()
+                If Not String.IsNullOrEmpty(sCurSuffix.Trim()) And TargetFile.ToString.ToLower.EndsWith(sCurSuffix) Then
+                    blnRetVal = True
+                    Exit For
+                End If
+            Next intIndex
+
+            Return blnRetVal
+
+        End Function
+
     End Class
 
     Private Class TitleComparer
@@ -2904,7 +2933,7 @@ Public Class frmMain
             ScanFiles(False, True)
         Else
             For intIndex = 0 To rtResultsTracker.FileDataList.Count - 1
-                UpdateFileView(rtResultsTracker.FileDataList.Item(intIndex), intIndex, False)
+                UpdateFileView(TryCast(rtResultsTracker.FileDataList.Item(intIndex), FileData), intIndex, False)
             Next
         End If
 
@@ -2912,6 +2941,9 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub btnSelectDir_Click(sender As Object, e As EventArgs) Handles btnSelectDir.Click
+        ShowSelectDirectoryDialog()
+    End Sub
 End Class
 
 
