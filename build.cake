@@ -46,6 +46,7 @@ Task("Build")
       XBuild("./VisualCodeGrepper.sln", settings =>
         settings.SetConfiguration(configuration));
     }
+	
 });
 
 Task("Run-Unit-Tests")

@@ -90,3 +90,4 @@ C:\mick\code\dotnet\VCG\VisualCodeGrepper\obj\x86\Debug\VisualCodeGrepper.xml
 C:\mick\code\dotnet\VCG\VisualCodeGrepper\obj\x86\Debug\VisualCodeGrepper.pdb
 C:\mick\code\dotnet\VCG\VisualCodeGrepper\bin\Debug\VisualCodeGrepper.exe.config
 C:\mick\code\dotnet\VCG\VisualCodeGrepper\obj\x86\Debug\VisualCodeGrepper.vbproj.CoreCompileInputs.cache
+C:\Users\norrisch\code\VCG\VisualCodeGrepper\bin\Debug\VisualCodeGrepper.exe.config
