@@ -25,9 +25,11 @@ Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Text.RegularExpressions
 Imports System.Collections.Concurrent
 Imports System.Xml
+Imports System.ComponentModel
 Imports System.Collections.Generic
 Imports System.Threading.Tasks
 Imports System.Threading.Tasks.Task
+Imports VisualCodeGrepper.SafeInvokeVcg
 Imports Microsoft.WindowsAPICodePack.Dialogs
 
 Public Class frmMain
@@ -230,9 +232,9 @@ Public Class frmMain
 
                 IncrementLoadingBar(strItem)
 
-                Dim t As Task = Task.Factory.StartNew(Sub() ScanFileWrapper(CommentScan, CodeScan, strTrimmedComment, strItem))
-                t.WaitAll()
-                'ScanFileWrapper(CommentScan, CodeScan, strTrimmedComment, strItem)
+                'Dim t As Task = Task.Factory.StartNew(Sub() ScanFileWrapper(CommentScan, CodeScan, strTrimmedComment, strItem))
+                't.WaitAll()
+                ScanFileWrapper(CommentScan, CodeScan, strTrimmedComment, strItem)
 
                 '== Avoid the GUI locking or hanging during processing ==
                 Application.DoEvents()
@@ -520,67 +522,61 @@ Public Class frmMain
 
 
             ' Set font style and colour for title
-            rtbResults.Invoke(New Action(Sub()
-                                             rtbResults.Select(Convert.ToInt32(lngPosition), Len(Title))
-                                             rtbResults.SelectionFont = fntTitleFont
+            rtbResults.Select(lngPosition, Len(Title))
+            rtbResults.SelectionFont = fntTitleFont
 
-                                             If Title.Trim <> "" Then
-                                                 Select Case Severity
-                                                     Case CodeIssue.CRITICAL
-                                                         rtbResults.SelectionColor = Color.Purple
-                                                         Title = "CRITICAL: " & Title
-                                                     Case CodeIssue.HIGH
-                                                         rtbResults.SelectionColor = Color.Red
-                                                         Title = "HIGH: " & Title
-                                                     Case CodeIssue.MEDIUM
-                                                         rtbResults.SelectionColor = Color.Orange
-                                                         Title = "MEDIUM: " & Title
-                                                     Case CodeIssue.LOW
-                                                         rtbResults.SelectionColor = Color.CornflowerBlue
-                                                         Title = "LOW: " & Title
-                                                     Case CodeIssue.INFO
-                                                         rtbResults.SelectionColor = Color.Blue
-                                                         Title = "SUSPICIOUS COMMENT: " & Title
-                                                     Case CodeIssue.POSSIBLY_SAFE
-                                                         rtbResults.SelectionColor = Color.Green
-                                                         Title = "POTENTIAL ISSUE: " & Title
-                                                     Case Else
-                                                         rtbResults.SelectionColor = Color.Goldenrod
-                                                         Title = "STANDARD: " & Title
-                                                 End Select
+            If Title.Trim <> "" Then
+                Select Case Severity
+                    Case CodeIssue.CRITICAL
+                        rtbResults.SelectionColor = Color.Purple
+                        Title = "CRITICAL: " & Title
+                    Case CodeIssue.HIGH
+                        rtbResults.SelectionColor = Color.Red
+                        Title = "HIGH: " & Title
+                    Case CodeIssue.MEDIUM
+                        rtbResults.SelectionColor = Color.Orange
+                        Title = "MEDIUM: " & Title
+                    Case CodeIssue.LOW
+                        rtbResults.SelectionColor = Color.CornflowerBlue
+                        Title = "LOW: " & Title
+                    Case CodeIssue.INFO
+                        rtbResults.SelectionColor = Color.Blue
+                        Title = "SUSPICIOUS COMMENT: " & Title
+                    Case CodeIssue.POSSIBLY_SAFE
+                        rtbResults.SelectionColor = Color.Green
+                        Title = "POTENTIAL ISSUE: " & Title
+                    Case Else
+                        rtbResults.SelectionColor = Color.Goldenrod
+                        Title = "STANDARD: " & Title
+                End Select
 
-                                                 rtbResults.AppendText(Title)
-                                                 lngPosition += Len(Title)
-                                             End If
+                rtbResults.AppendText(Title)
+                lngPosition += Len(Title)
+            End If
 
-                                             ' Set font style and colour for description
-                                             rtbResults.Select(lngPosition, Len(Description))
-                                             rtbResults.SelectionFont = fntTextFont
-                                             rtbResults.SelectionColor = Color.Black
+            ' Set font style and colour for description
+            rtbResults.Select(lngPosition, Len(Description))
+            rtbResults.SelectionFont = fntTextFont
+            rtbResults.SelectionColor = Color.Black
 
-                                             rtbResults.AppendText(Description)
-                                             lngPosition += Len(Description)
+            rtbResults.AppendText(Description)
+            lngPosition += Len(Description)
 
-                                             ' Set font style and colour for code
-                                             If CodeLine.Trim <> "" Then
-                                                 CodeLine &= vbNewLine & vbNewLine
+            ' Set font style and colour for code
+            If CodeLine.Trim <> "" Then
+                CodeLine &= vbNewLine & vbNewLine
 
-                                                 rtbResults.Select(lngPosition, Len(CodeLine))
-                                                 rtbResults.SelectionFont = fntCodeFont
-                                                 rtbResults.SelectionColor = Color.Black
+                rtbResults.Select(lngPosition, Len(CodeLine))
+                rtbResults.SelectionFont = fntCodeFont
+                rtbResults.SelectionColor = Color.Black
 
-                                                 rtbResults.AppendText(CodeLine)
-                                                 lngPosition += Len(CodeLine)
-                                             Else
-                                                 rtbResults.AppendText(vbNewLine)
-                                                 lngPosition += Len(vbNewLine)
-                                             End If
-
-
-                                         End Sub))
-
+                rtbResults.AppendText(CodeLine)
+                lngPosition += Len(CodeLine)
+            Else
+                rtbResults.AppendText(vbNewLine)
+                lngPosition += Len(vbNewLine)
+            End If
         End If
-
 
         '== Write details to output files if required ==
         If asAppSettings.IsOutputFile Then
@@ -2745,6 +2741,20 @@ Public Class frmMain
             Application.DoEvents()
 
         End Function
+    End Class
+
+    Public NotInheritable Class ISynchronizeInvokeExtensions
+        'Private Sub New()
+        'End Sub
+
+        '<System.Runtime.CompilerServices.Extension>
+        Public Shared Sub InvokeEx(Of T As ISynchronizeInvoke)(this As T, action As Action(Of T))
+            If this.InvokeRequired Then
+                this.Invoke(action, New Object() {this})
+            Else
+                action(this)
+            End If
+        End Sub
     End Class
 
 

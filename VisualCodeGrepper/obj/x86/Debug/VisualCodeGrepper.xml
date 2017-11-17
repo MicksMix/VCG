@@ -22,5 +22,17 @@ VisualCodeGrepper
   resource lookups using this strongly typed resource class.
 </summary>
 </member>
+<member name="M:VisualCodeGrepper.SafeInvokeVcg.SafeInvoke``1(``0,System.Action{``0})">
+ <summary>
+ This can be used in VB with:
+ txtMyTextBox.SafeInvoke(Sub(d) d.Text = "This is my new Text value.")
+ or:
+ txtMyTextBox.SafeInvoke(Sub(d) d.Text = myTextStringVariable)
+ </summary>
+ <typeparam name="T"></typeparam>
+ <param name="isi"></param>
+ <param name="callFunction"></param>
+ <remarks></remarks>
+</member>
 </members>
 </doc>

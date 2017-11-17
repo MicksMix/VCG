@@ -245,6 +245,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="ResultsTracker.vb" />
+    <Compile Include="SafeInvokeVcg.vb" />
     <Compile Include="ScanResult.vb" />
     <Compile Include="SyncBlock.vb" />
   </ItemGroup>
